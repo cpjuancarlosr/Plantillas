@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 10px;
+        background-color: #f8f9fa;
+      }
+      #uploadForm {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+      h2 {
+        font-size: 16px;
+        color: #333;
+        margin-top: 0;
+        border-bottom: 2px solid #00A878; /* Acento verde financiero */
+        padding-bottom: 5px;
+      }
+      #fileInput {
+        border: 1px solid #ccc;
+        padding: 8px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #submitButton {
+        background-color: #00A878;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      #submitButton:hover {
+        background-color: #008761;
+      }
+      #submitButton:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+      #status {
+        margin-top: 15px;
+        font-size: 12px;
+        color: #555;
+        border-left: 3px solid #ccc;
+        padding-left: 10px;
+        min-height: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="uploadForm">
+      <h2>Cargar Facturas XML</h2>
+      <p style="font-size:12px; margin:0;">Selecciona uno o más archivos CFDI (.xml) para procesarlos.</p>
+      <input type="file" id="fileInput" multiple accept=".xml">
+      <button id="submitButton">Procesar Archivos</button>
+    </div>
+    <div id="status">Esperando archivos...</div>
+
+    <script>
+      document.getElementById('submitButton').addEventListener('click', function() {
+        const files = document.getElementById('fileInput').files;
+        if (files.length === 0) {
+          document.getElementById('status').innerText = 'Por favor, selecciona al menos un archivo.';
+          return;
+        }
+
+        const button = this;
+        button.disabled = true;
+        document.getElementById('status').innerText = 'Leyendo archivos...';
+
+        const fileReaders = [];
+        const fileContents = [];
+
+        for (let i = 0; i < files.length; i++) {
+          const reader = new FileReader();
+          fileReaders.push(new Promise((resolve, reject) => {
+            reader.onload = function(e) {
+              fileContents.push({
+                fileName: files[i].name,
+                content: e.target.result
+              });
+              resolve();
+            };
+            reader.onerror = reject;
+            reader.readAsText(files[i]);
+          }));
+        }
+
+        Promise.all(fileReaders)
+          .then(() => {
+            document.getElementById('status').innerText = `Enviando ${fileContents.length} archivo(s) al servidor...`;
+            google.script.run
+              .withSuccessHandler(function(response) {
+                document.getElementById('status').innerHTML = response;
+                button.disabled = false;
+                document.getElementById('fileInput').value = ""; // Clear file input
+              })
+              .withFailureHandler(function(error) {
+                document.getElementById('status').innerText = 'Error: ' + error.message;
+                button.disabled = false;
+              })
+              .processXmlFiles(fileContents);
+          })
+          .catch(error => {
+            document.getElementById('status').innerText = 'Error al leer los archivos: ' + error.message;
+            button.disabled = false;
+          });
+      });
+    </script>
+  </body>
+</html>
