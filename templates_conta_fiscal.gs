@@ -9,12 +9,12 @@ function createAllContaFiscalTemplates_(ss) {
   createBalanzaComprobacionTemplate_(ss);
   createEstadoResultadosTemplate_(ss);
   createBalanceGeneralTemplate_(ss);
-  createFlujoEfectivoIndirectoTemplate_(ss);
+  createActivosFijosTemplate_(ss);
+  createFlujoEfectivoIndirectoTemplate_(ss); // Depends on ActivosFijos
   createConciliacionBancariaTemplate_(ss);
   createIvaTemplate_(ss);
   createIsrPmTemplate_(ss);
   createPtuTemplate_(ss);
-  createActivosFijosTemplate_(ss);
   createRetencionesTemplate_(ss);
   createDeclaracionesProvisionalesTemplate_(ss);
   createTableroFiscalTemplate_(ss);
@@ -159,7 +159,11 @@ function createIvaTemplate_(ss) {
     s.getRange('A1:E1').setValues([['IVA Trasladado (Ventas)', 'Fecha', 'Base', 'Tasa', 'Impuesto']]);
     s.getRange('G1:K1').setValues([['IVA Acreditable (Compras)', 'Fecha', 'Base', 'Tasa', 'Impuesto']]);
     s.getRange('M1:N1').setValues([['Determinación Mensual', '']]);
-    s.getRange('M2:N5').setValues([['IVA Trasladado (Cobrado)', ''], ['(-) IVA Acreditable (Pagado)', ''], ['(=) IVA a Cargo / Favor', ''], ['Suma de Impuestos', '=N2-N3']]);
+    s.getRange('M2:N4').setValues([
+      ['IVA Trasladado (Cobrado)', ''],
+      ['(-) IVA Acreditable (Pagado)', ''],
+      ['(=) IVA a Cargo / Favor', '=N2-N3']
+    ]);
     s.getRange('N2').setFormula('=SUM(E:E)');
     s.getRange('N3').setFormula('=SUM(K:K)');
     styleKpiCard_(s, 'P2:Q3', 'IVA a Pagar');
