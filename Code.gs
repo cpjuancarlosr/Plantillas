@@ -52,16 +52,15 @@ function initialSetup() {
   createIsrSheet_(ss);
   createDashboardSheet_(ss);
 
-  SpreadsheetApp.getUi().alert('¡Configuración completada!', 'Se han creado todas las hojas del sistema, incluyendo los reportes financieros. El siguiente paso es configurar tu Catálogo de Cuentas y las Reglas de Categorización.', SpreadsheetApp.getUi().ButtonSet.OK);
+  // Poblar con datos iniciales para que el sistema sea usable desde el inicio
+  seedInitialData_(ss);
+
+  SpreadsheetApp.getUi().alert('¡Configuración completada!', 'Se han creado todas las hojas y se ha cargado un catálogo de cuentas y reglas de ejemplo. El sistema está listo para usarse.', SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
 
 // --- FUNCIONES DE CREACIÓN DE HOJAS DE ANÁLISIS Y REPORTES ---
 
-/**
- * Crea la hoja para el Cálculo de IVA.
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
- */
 function createIvaSheet_(ss) {
   const sheetName = 'Cálculo de IVA';
   let sheet = ss.getSheetByName(sheetName);
@@ -69,20 +68,16 @@ function createIvaSheet_(ss) {
 
   sheet.getRange('A1').setValue('Cálculo de IVA Mensual').setFontWeight('bold').setFontSize(14);
   const concepts = [
-    ['IVA Acreditable (de Gastos)', "=SUMIFS('Balanza de Comprobación'!C:C, 'Catálogo de Cuentas'!A:A, 'Balanza de Comprobación'!A:A, 'Catálogo de Cuentas'!B:B, \"*IVA*\")"],
+    ['IVA Acreditable (de Gastos)', "=SUMIF('Balanza de Comprobación'!B:B, \"*IVA*\", 'Balanza de Comprobación'!E:E)"],
     ['IVA Trasladado (de Ingresos)', 0],
     ['= IVA a Cargo / (Favor)', '=B3-B2']
   ];
   sheet.getRange('A2:B4').setValues(concepts);
   sheet.getRange('B2:B4').setNumberFormat('$#,##0.00');
   sheet.getRange('A2:A4').setFontWeight('bold');
-  sheet.getRange('B3').setNote('El IVA trasladado de ingresos no se calcula automáticamente en esta versión, ya que el script se enfoca en procesar facturas de gastos.');
+  sheet.getRange('B3').setNote('El IVA trasladado de ingresos no se calcula automáticamente en esta versión.');
 }
 
-/**
- * Crea la hoja para el Cálculo de ISR Provisional.
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
- */
 function createIsrSheet_(ss) {
   const sheetName = 'Cálculo de ISR Provisional';
   let sheet = ss.getSheetByName(sheetName);
@@ -105,10 +100,6 @@ function createIsrSheet_(ss) {
   sheet.getRange('B6').setNumberFormat('0.00%');
 }
 
-/**
- * Crea la hoja para el Tablero Financiero.
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
- */
 function createDashboardSheet_(ss) {
   const sheetName = 'Tablero Financiero';
   let sheet = ss.getSheetByName(sheetName);
@@ -116,67 +107,79 @@ function createDashboardSheet_(ss) {
 
   sheet.getRange('A1').setValue('Tablero Financiero').setFontWeight('bold').setFontSize(18);
 
-  // KPIs de Liquidez
   sheet.getRange('B3').setValue('Liquidez').setFontWeight('bold');
   sheet.getRange('B4').setValue('Razón Circulante');
   sheet.getRange('C4').setFormula("=IFERROR('Balance General'!B3 / 'Balance General'!E3, 0)").setNumberFormat('0.00');
   sheet.getRange('B4:C4').setNote('Activo Circulante / Pasivo Circulante. Idealmente > 1.5');
 
-  // KPIs de Rentabilidad
   sheet.getRange('E3').setValue('Rentabilidad').setFontWeight('bold');
   sheet.getRange('E4').setValue('Margen de Utilidad Neta');
   sheet.getRange('F4').setFormula("=IFERROR('Estado de Resultados'!B6 / 'Estado de Resultados'!B2, 0)").setNumberFormat('0.00%');
   sheet.getRange('E4:F4').setNote('Utilidad Neta / Ingresos Totales.');
 }
 
-/**
- * Crea la hoja para la Balanza de Comprobación.
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
- */
 function createBalanzaSheet_(ss) {
   const sheetName = 'Balanza de Comprobación';
   let sheet = ss.getSheetByName(sheetName);
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
-  } else {
-    sheet.clear();
-  }
+  if (!sheet) { sheet = ss.insertSheet(sheetName); } else { sheet.clear(); }
 
-  const headers = ['Cuenta', 'Nombre', 'Debe', 'Haber', 'Saldo Final'];
-  sheet.getRange('A1:E1').setValues([headers]).setFontWeight('bold').setBackground(THEME_COLORS.HEADER);
+  const headers = ['Cuenta', 'Nombre', 'Debe', 'Haber', 'Saldo Final', 'Tipo'];
+  sheet.getRange('A1:F1').setValues([headers]).setFontWeight('bold').setBackground(THEME_COLORS.HEADER);
+  sheet.setColumnWidth(6, 150);
 
-  // Formulas para jalar datos
-  sheet.getRange('A2').setFormula("=UNIQUE('Catálogo de Cuentas'!A2:A)");
-  sheet.getRange('B2').setFormula("=IF(A2=\"\",\"\",VLOOKUP(A2,'Catálogo de Cuentas'!A:B,2,FALSE))");
-  sheet.getRange('C2').setFormula("=IF(A2=\"\",\"\",SUMIF('Pólizas (Diario General)'!C:C,A2,'Pólizas (Diario General)'!E:E))");
-  sheet.getRange('D2').setFormula("=IF(A2=\"\",\"\",SUMIF('Pólizas (Diario General)'!C:C,A2,'Pólizas (Diario General)'!F:F))");
-  sheet.getRange('E2').setFormula("=IF(A2=\"\",\"\",IF(VLOOKUP(A2,'Catálogo de Cuentas'!A:D,4,FALSE)=\"Deudora\",C2-D2,D2-C2))");
+  // Fórmulas de ARRAYFORMULA para robustez
+  sheet.getRange('A2').setFormula("=SORT(UNIQUE('Catálogo de Cuentas'!A2:A))");
+  sheet.getRange('B2').setFormula("=ARRAYFORMULA(IF(A2:A=\"\",,IFERROR(VLOOKUP(A2:A, 'Catálogo de Cuentas'!A:B, 2, FALSE))))");
+  sheet.getRange('C2').setFormula("=ARRAYFORMULA(IF(A2:A=\"\",,SUMIF('Pólizas (Diario General)'!C:C, A2:A, 'Pólizas (Diario General)'!E:E)))");
+  sheet.getRange('D2').setFormula("=ARRAYFORMULA(IF(A2:A=\"\",,SUMIF('Pólizas (Diario General)'!C:C, A2:A, 'Pólizas (Diario General)'!F:F)))");
+  sheet.getRange('E2').setFormula("=ARRAYFORMULA(IF(A2:A=\"\",,IF(VLOOKUP(A2:A, 'Catálogo de Cuentas'!A:D, 4, FALSE)=\"Deudora\", C2:C-D2:D, D2:D-C2:C)))");
+  sheet.getRange('F2').setFormula("=ARRAYFORMULA(IF(A2:A=\"\",,IFERROR(VLOOKUP(A2:A, 'Catálogo de Cuentas'!A:C, 3, FALSE))))");
 
-  // Autocompletar fórmulas hacia abajo
-  const lastRow = sheet.getMaxRows();
-  sheet.getRange('B2:E2').autoFill(sheet.getRange(`B2:E${lastRow}`), SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
   sheet.getRange('C:E').setNumberFormat('$#,##0.00');
 }
 
-/**
- * Crea la hoja para el Estado de Resultados.
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
- */
+// --- DATOS INICIALES ---
+function seedInitialData_(ss) {
+  const catalogoSheet = ss.getSheetByName('Catálogo de Cuentas');
+  const reglasSheet = ss.getSheetByName('Reglas de Categorización');
+
+  // Verificar si ya hay datos para no duplicar
+  if (catalogoSheet.getRange('A2').getValue() !== "") return;
+
+  const catalogoData = [
+    ['1101', 'Caja', 'Activo', 'Deudora'],
+    ['1102', 'Bancos', 'Activo', 'Deudora'],
+    ['1105', 'Clientes', 'Activo', 'Deudora'],
+    ['1120', 'IVA Acreditable', 'Activo', 'Deudora'],
+    ['2101', 'Proveedores', 'Pasivo', 'Acreedora'],
+    ['2105', 'Acreedores Diversos', 'Pasivo', 'Acreedora'],
+    ['4101', 'Ventas', 'Ingreso', 'Acreedora'],
+    ['6101', 'Gastos de Oficina', 'Gasto', 'Deudora'],
+    ['6102', 'Servicios Públicos (Luz, Agua)', 'Gasto', 'Deudora'],
+    ['6103', 'Renta de Oficina', 'Gasto', 'Deudora']
+  ];
+  catalogoSheet.getRange(2, 1, catalogoData.length, 4).setValues(catalogoData);
+
+  const reglasData = [
+    ['RFC', 'CFE123456ABC', '6102', '1120', '2101'],
+    ['RFC', 'TELMEX123ABC', '6102', '1120', '2101'],
+    ['PalabraClave', 'Office Depot', '6101', '1120', '2105']
+  ];
+  reglasSheet.getRange(2, 1, reglasData.length, 5).setValues(reglasData);
+}
+
 function createEstadoResultadosSheet_(ss) {
   const sheetName = 'Estado de Resultados';
   let sheet = ss.getSheetByName(sheetName);
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
-  } else {
-    sheet.clear();
-  }
+  if (!sheet) { sheet = ss.insertSheet(sheetName); } else { sheet.clear(); }
 
   sheet.getRange('A1').setValue('Estado de Resultados').setFontWeight('bold').setFontSize(14);
   const concepts = [
-    ['Ingresos', "=SUMIFS('Balanza de Comprobación'!E:E, 'Catálogo de Cuentas'!A:A, 'Balanza de Comprobación'!A:A, 'Catálogo de Cuentas'!C:C, \"Ingreso\")"],
-    ['(-) Costos', "=SUMIFS('Balanza de Comprobación'!E:E, 'Catálogo de Cuentas'!A:A, 'Balanza de Comprobación'!A:A, 'Catálogo de Cuentas'!C:C, \"Costo\")"],
+    // Fórmulas corregidas para usar la columna de ayuda en la Balanza
+    ['Ingresos', "=SUMIF('Balanza de Comprobación'!F:F, \"Ingreso\", 'Balanza de Comprobación'!E:E)"],
+    ['(-) Costos', "=SUMIF('Balanza de Comprobación'!F:F, \"Costo\", 'Balanza de Comprobación'!E:E)"],
     ['= Utilidad Bruta', '=B2-B3'],
-    ['(-) Gastos', "=SUMIFS('Balanza de Comprobación'!E:E, 'Catálogo de Cuentas'!A:A, 'Balanza de Comprobación'!A:A, 'Catálogo de Cuentas'!C:C, \"Gasto\")"],
+    ['(-) Gastos', "=SUMIF('Balanza de Comprobación'!F:F, \"Gasto\", 'Balanza de Comprobación'!E:E)"],
     ['= Utilidad Neta', '=B4-B5']
   ];
   sheet.getRange('A2:B6').setValues(concepts);
@@ -184,36 +187,28 @@ function createEstadoResultadosSheet_(ss) {
   sheet.getRange('A2:A6').setFontWeight('bold');
 }
 
-/**
- * Crea la hoja para el Balance General.
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
- */
 function createBalanceGeneralSheet_(ss) {
   const sheetName = 'Balance General';
   let sheet = ss.getSheetByName(sheetName);
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
-  } else {
-    sheet.clear();
-  }
+  if (!sheet) { sheet = ss.insertSheet(sheetName); } else { sheet.clear(); }
 
   sheet.getRange('A1').setValue('Balance General').setFontWeight('bold').setFontSize(14);
 
-  // Activos
   sheet.getRange('A2').setValue('ACTIVOS').setFontWeight('bold');
   sheet.getRange('A3').setValue('Total Activos');
-  sheet.getRange('B3').setFormula("=SUMIFS('Balanza de Comprobación'!E:E, 'Catálogo de Cuentas'!A:A, 'Balanza de Comprobación'!A:A, 'Catálogo de Cuentas'!C:C, \"Activo\")");
+  // Fórmula corregida
+  sheet.getRange('B3').setFormula("=SUMIF('Balanza de Comprobación'!F:F, \"Activo\", 'Balanza de Comprobación'!E:E)");
 
-  // Pasivos y Capital
   sheet.getRange('D2').setValue('PASIVOS Y CAPITAL').setFontWeight('bold');
   sheet.getRange('D3').setValue('Total Pasivos');
-  sheet.getRange('E3').setFormula("=SUMIFS('Balanza de Comprobación'!E:E, 'Catálogo de Cuentas'!A:A, 'Balanza de Comprobación'!A:A, 'Catálogo de Cuentas'!C:C, \"Pasivo\")");
+  // Fórmula corregida
+  sheet.getRange('E3').setFormula("=SUMIF('Balanza de Comprobación'!F:F, \"Pasivo\", 'Balanza de Comprobación'!E:E)");
   sheet.getRange('D4').setValue('Total Capital');
-  sheet.getRange('E4').setFormula("=SUMIFS('Balanza de Comprobación'!E:E, 'Catálogo de Cuentas'!A:A, 'Balanza de Comprobación'!A:A, 'Catálogo de Cuentas'!C:C, \"Capital\")");
+  // Fórmula corregida
+  sheet.getRange('E4').setFormula("=SUMIF('Balanza de Comprobación'!F:F, \"Capital\", 'Balanza de Comprobación'!E:E)");
   sheet.getRange('D5').setValue('Utilidad del Ejercicio');
   sheet.getRange('E5').setFormula("='Estado de Resultados'!B6");
 
-  // Ecuación Contable
   sheet.getRange('A7').setValue('Total Activo').setFontWeight('bold');
   sheet.getRange('B7').setFormula('=B3');
   sheet.getRange('D7').setValue('Total Pasivo + Capital').setFontWeight('bold');
