@@ -139,14 +139,74 @@ function updateReports() {
 
 // --- LÓGICA DE PROCESAMIENTO DE XML ---
 function processXmlFiles(fileObjects) {
-  // ... (código de processXmlFiles, findCategorizationRule_, createJournalEntries_ se mantiene igual que la versión anterior) ...
-  // Se añade la llamada a updateReports() al final
-  updateReports();
-  return `Proceso finalizado: ${successCount} éxito, ${needsRuleCount} requieren regla, ${errorCount} error.`;
-}
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const cfdiLogSheet = ss.getSheetByName('Log de CFDI');
+  const reglasSheet = ss.getSheetByName('Reglas de Categorización');
+  const polizasSheet = ss.getSheetByName('Pólizas (Diario General)');
 
-// (Aquí irían las funciones findCategorizationRule_ y createJournalEntries_ de la versión anterior, sin cambios)
-// (También las funciones de creación de hojas estructurales y seedInitialData_ se mantienen)
+  let reglasData = [];
+  const lastRuleRow = reglasSheet.getLastRow();
+  if (lastRuleRow > 1) {
+    reglasData = reglasSheet.getRange(2, 1, lastRuleRow - 1, 5).getValues();
+  }
+
+  let successCount = 0;
+  let errorCount = 0;
+  let needsRuleCount = 0;
+
+  fileObjects.forEach(fileObject => {
+    const timestamp = new Date();
+    let logRow = [timestamp, fileObject.fileName, '', '', '', '', 'Iniciando', ''];
+    const logRange = cfdiLogSheet.getRange(cfdiLogSheet.getLastRow() + 1, 1, 1, 8);
+    logRange.setValues([logRow]);
+
+    try {
+      const doc = XmlService.parse(fileObject.content);
+      const root = doc.getRootElement();
+      const cfdi = XmlService.getNamespace('http://www.sat.gob.mx/cfd/4');
+      const tfd = XmlService.getNamespace('http://www.sat.gob.mx/TimbreFiscalDigital');
+
+      const emisor = root.getChild('Emisor', cfdi);
+      const receptor = root.getChild('Receptor', cfdi);
+      const timbre = root.getChild('Complemento', cfdi).getChild('TimbreFiscalDigital', tfd);
+
+      const rfcEmisor = emisor.getAttribute('Rfc').getValue();
+      const rfcReceptor = receptor.getAttribute('Rfc').getValue();
+      const total = root.getAttribute('Total').getValue();
+      const uuid = timbre.getAttribute('UUID').getValue();
+      const fecha = new Date(root.getAttribute('Fecha').getValue());
+
+      logRow[2] = uuid;
+      logRow[3] = rfcEmisor;
+      logRow[4] = rfcReceptor;
+      logRow[5] = parseFloat(total);
+
+      const rule = findCategorizationRule_(rfcEmisor, reglasData);
+
+      if (rule) {
+        createJournalEntries_(polizasSheet, rule, total, uuid, fecha);
+        logRow[6] = 'Procesado';
+        successCount++;
+      } else {
+        logRow[6] = 'Requiere Regla';
+        logRow[7] = `No se encontró una regla para el RFC ${rfcEmisor}.`;
+        needsRuleCount++;
+      }
+    } catch (e) {
+      logRow[6] = 'Error';
+      logRow[7] = e.message.slice(0, 500);
+      errorCount++;
+    }
+    logRange.setValues([logRow]);
+  });
+
+  updateReports();
+
+  return `Proceso finalizado: <br>
+          - ${successCount} procesados con éxito.<br>
+          - ${needsRuleCount} requieren regla.<br>
+          - ${errorCount} con error.`;
+}
 
 // --- HELPERS ---
 function getOrCreateSheet_(ss, sheetName) {
