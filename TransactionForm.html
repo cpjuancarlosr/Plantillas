@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+      body { padding: 15px; }
+      .entry-row { display: flex; margin-bottom: 10px; }
+      .entry-row select, .entry-row input { margin-right: 5px; }
+      #total-debit, #total-credit { font-weight: bold; }
+      .balance-status { margin-top: 10px; font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <h4>Registrar Asiento Contable</h4>
+    <div class="form-group">
+      <label for="date">Fecha</label>
+      <input type="date" id="date" class="form-control">
+    </div>
+    <div class="form-group">
+      <label for="description">Descripción</label>
+      <input type="text" id="description" class="form-control">
+    </div>
+
+    <div id="entries">
+      <!-- Las filas de asientos se añadirán aquí dinámicamente -->
+    </div>
+
+    <button type="button" class="btn btn-secondary btn-sm" onclick="addEntryRow()">+ Añadir Fila</button>
+
+    <div class="mt-3">
+      <strong>Totales:</strong>
+      <div>Débito: <span id="total-debit">0.00</span></div>
+      <div>Crédito: <span id="total-credit">0.00</span></div>
+      <div id="balance-status" class="text-danger">Desbalanceado</div>
+    </div>
+
+    <button type="button" class="btn btn-primary mt-3" onclick="submitForm()" id="submit-button" disabled>Registrar</button>
+
+    <script>
+      var chartOfAccounts = [];
+
+      document.addEventListener("DOMContentLoaded", function() {
+        google.script.run.withSuccessHandler(function(accounts) {
+          chartOfAccounts = accounts;
+          addEntryRow();
+          addEntryRow();
+        }).getChartOfAccounts();
+        document.getElementById('date').valueAsDate = new Date();
+      });
+
+      function addEntryRow() {
+        var container = document.getElementById('entries');
+        var newRow = document.createElement('div');
+        newRow.className = 'entry-row';
+        newRow.innerHTML = `
+          <select class="form-control" onchange="updateTotals()">${getAccountOptions()}</select>
+          <input type="number" class="form-control debit" placeholder="Debe" oninput="updateTotals()">
+          <input type="number" class="form-control credit" placeholder="Haber" oninput="updateTotals()">
+        `;
+        container.appendChild(newRow);
+      }
+
+      function getAccountOptions() {
+        var options = '<option value="" disabled selected>Seleccione una cuenta</option>';
+        for (var i = 1; i < chartOfAccounts.length; i++) {
+          options += `<option value="${chartOfAccounts[i][0]} - ${chartOfAccounts[i][1]}">${chartOfAccounts[i][0]} - ${chartOfAccounts[i][1]}</option>`;
+        }
+        return options;
+      }
+
+      function updateTotals() {
+        var debits = document.getElementsByClassName('debit');
+        var credits = document.getElementsByClassName('credit');
+        var totalDebit = 0;
+        var totalCredit = 0;
+
+        for (var i = 0; i < debits.length; i++) {
+          totalDebit += parseFloat(debits[i].value) || 0;
+        }
+        for (var i = 0; i < credits.length; i++) {
+          totalCredit += parseFloat(credits[i].value) || 0;
+        }
+
+        document.getElementById('total-debit').innerText = totalDebit.toFixed(2);
+        document.getElementById('total-credit').innerText = totalCredit.toFixed(2);
+
+        var balanceStatus = document.getElementById('balance-status');
+        var submitButton = document.getElementById('submit-button');
+
+        if (totalDebit === totalCredit && totalDebit > 0) {
+          balanceStatus.innerText = 'Balanceado';
+          balanceStatus.className = 'text-success';
+          submitButton.disabled = false;
+        } else {
+          balanceStatus.innerText = 'Desbalanceado';
+          balanceStatus.className = 'text-danger';
+          submitButton.disabled = true;
+        }
+      }
+
+      function submitForm() {
+        var date = document.getElementById('date').value;
+        var description = document.getElementById('description').value;
+        var entryRows = document.getElementsByClassName('entry-row');
+        var transactionData = {
+          date: date,
+          description: description,
+          entries: []
+        };
+
+        for (var i = 0; i < entryRows.length; i++) {
+          var row = entryRows[i];
+          var account = row.children[0].value;
+          var debit = row.children[1].value;
+          var credit = row.children[2].value;
+
+          if (account && (debit || credit)) {
+            transactionData.entries.push({
+              account: account,
+              debit: debit,
+              credit: credit
+            });
+          }
+        }
+
+        google.script.run.withSuccessHandler(function(response) {
+          alert(response);
+          google.script.host.close();
+        }).recordTransaction(transactionData);
+      }
+    </script>
+  </body>
+</html>
