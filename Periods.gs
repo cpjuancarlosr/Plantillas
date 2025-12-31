@@ -6,8 +6,8 @@
  * contables (generalmente mensuales). Asegura que los datos históricos
  * se mantengan íntegros y prepara el sistema para un nuevo ciclo de inputs.
  *
- * @author Tu Nombre/Empresa
- * @version 1.0
+ * @author ECD OS
+ * @version 1.1
  */
 
 /**
@@ -23,6 +23,7 @@ function createNewMonth() {
     const newMonthName = response.getResponseText();
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheetsToDuplicate = CONFIG.PERIOD_MANAGEMENT.SHEETS_TO_DUPLICATE;
+    let newSheetNames = {};
 
     ss.toast('Iniciando creación del nuevo mes...', 'ECD OS');
 
@@ -30,9 +31,15 @@ function createNewMonth() {
       const originalSheet = ss.getSheetByName(sheetName);
       if (originalSheet) {
         const newSheet = originalSheet.copyTo(ss);
-        newSheet.setName(`${sheetName} (${newMonthName})`);
+        const newName = `${sheetName} (${newMonthName})`;
+        newSheet.setName(newName);
 
-        // REFACTORIZACIÓN: Usar el nuevo formato de rango más robusto.
+        if (sheetName.includes('Ingresos')) {
+          newSheetNames.income = newName;
+        } else if (sheetName.includes('Egresos')) {
+          newSheetNames.expense = newName;
+        }
+
         const editableRangeA1 = CONFIG.EDITABLE_RANGES[sheetName];
         if (editableRangeA1) {
           const dataRange = newSheet.getRange(editableRangeA1);
@@ -41,7 +48,12 @@ function createNewMonth() {
       }
     });
 
-    ui.alert(`Mes "${newMonthName}" creado. Las hojas de input han sido duplicadas.`);
+    // Actualizar el período activo para que los cálculos usen las nuevas hojas
+    if (newSheetNames.income && newSheetNames.expense) {
+      updateActivePeriod(newSheetNames.income, newSheetNames.expense);
+    }
+
+    ui.alert(`Mes "${newMonthName}" creado y activado. Las hojas de input han sido duplicadas.`);
   }
 }
 
@@ -71,13 +83,76 @@ function clearCurrentMonthInputs() {
 }
 
 /**
- * Archiva y bloquea un mes cerrado.
- * Renombra la hoja y la protege contra futuras ediciones.
+ * Archiva y bloquea las hojas del período activo.
+ * Renombra las hojas y las protege contra futuras ediciones.
  */
 function archiveCurrentMonth() {
-  // Esta es una función más compleja que podría involucrar:
-  // 1. Pedir al usuario el mes a cerrar.
-  // 2. Renombrar las hojas de ese mes (ej. a "ZZ. Ingresos (Ene 2024)").
-  // 3. Aplicar protección a toda la hoja, permitiendo solo a los 'owners'.
-  SpreadsheetApp.getUi().alert('La función de archivar el mes aún no está completamente implementada.');
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert('Confirmar Archivo', '¿Estás seguro de que quieres archivar y bloquear el período activo? Esta acción no se puede deshacer.', ui.ButtonSet.YES_NO);
+
+  if (response == ui.Button.YES) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const configSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.CONFIGURACION);
+
+    if (!configSheet) {
+      ui.alert('Error: No se encontró la hoja de configuración.');
+      return;
+    }
+
+    const activeIncomeSheetName = configSheet.getRange(CONFIG.ACTIVE_PERIOD_CONFIG.ACTIVE_INCOME_SHEET_CELL).getValue();
+    const activeExpenseSheetName = configSheet.getRange(CONFIG.ACTIVE_PERIOD_CONFIG.ACTIVE_EXPENSE_SHEET_CELL).getValue();
+
+    const sheetsToArchive = [ss.getSheetByName(activeIncomeSheetName), ss.getSheetByName(activeExpenseSheetName)];
+
+    ss.toast('Archivando período...', 'ECD OS');
+
+    sheetsToArchive.forEach(sheet => {
+      if (sheet) {
+        // 1. Renombrar la hoja
+        sheet.setName(`Archivado - ${sheet.getName()}`);
+
+        // 2. Proteger la hoja completamente
+        const protection = sheet.protect();
+        protection.setDescription('Período archivado. Solo lectura.');
+
+        // 3. Asegurar que solo los 'owners' puedan (potencialmente) editar
+        const owners = CONFIG.USER_ROLES.OWNERS;
+        protection.addEditors(owners);
+
+        // Opcional: Remover a todos los demás editores
+        const editors = protection.getEditors();
+        editors.forEach(editor => {
+          if (owners.indexOf(editor.getEmail()) === -1) {
+            protection.removeEditor(editor);
+          }
+        });
+      }
+    });
+
+    // Limpiar las celdas del período activo
+    configSheet.getRange(CONFIG.ACTIVE_PERIOD_CONFIG.ACTIVE_INCOME_SHEET_CELL).clearContent();
+    configSheet.getRange(CONFIG.ACTIVE_PERIOD_CONFIG.ACTIVE_EXPENSE_SHEET_CELL).clearContent();
+
+    ui.alert('El período activo ha sido archivado y protegido.');
+  }
+}
+
+/**
+ * Actualiza las celdas de configuración con los nombres de las hojas del nuevo período activo.
+ * @param {string} newIncomeSheetName El nombre de la nueva hoja de ingresos.
+ * @param {string} newExpenseSheetName El nombre de la nueva hoja de egresos.
+ */
+function updateActivePeriod(newIncomeSheetName, newExpenseSheetName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const configSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.CONFIGURACION);
+
+  if (!configSheet) {
+    SpreadsheetApp.getUi().alert('Error Crítico: No se encontró la hoja "30. Configuración" para actualizar el período activo.');
+    return;
+  }
+
+  configSheet.getRange(CONFIG.ACTIVE_PERIOD_CONFIG.ACTIVE_INCOME_SHEET_CELL).setValue(newIncomeSheetName);
+  configSheet.getRange(CONFIG.ACTIVE_PERIOD_CONFIG.ACTIVE_EXPENSE_SHEET_CELL).setValue(newExpenseSheetName);
+
+  Logger.log(`Período activo actualizado a: ${newIncomeSheetName}, ${newExpenseSheetName}`);
 }

@@ -8,8 +8,8 @@
  * aplicando formatos básicos y estableciendo protecciones iniciales.
  * Es el punto de partida para configurar un nuevo cliente.
  *
- * @author Tu Nombre/Empresa
- * @version 1.0
+ * @author ECD OS
+ * @version 1.1
  */
 
 /**
@@ -64,9 +64,53 @@ function ECD_OS_INIT() {
   // 5. Configurar validación de datos
   setupDataValidation();
 
-  // 6. Crear menú personalizado (llamando a la función del archivo Menu.gs)
+  // 6. Aplicar seguridad basada en roles
+  applyRoleBasedProtections();
+
+  // 7. Crear menú personalizado (llamando a la función del archivo Menu.gs)
   createCustomMenu();
 
-  // 7. Mensaje de finalización
-  SpreadsheetApp.getUi().alert('¡Sistema inicializado correctamente!');
+  // 8. Configurar los triggers automáticos
+  setupTriggers();
+
+  // 9. Mensaje de finalización
+  SpreadsheetApp.getUi().alert('¡Sistema inicializado correctamente! La automatización ha sido configurada.');
+}
+
+/**
+ * Crea o actualiza los triggers necesarios para la automatización del sistema.
+ * Borra los triggers antiguos para evitar duplicados.
+ */
+function setupTriggers() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Borrar todos los triggers existentes para este proyecto para evitar duplicados
+  const existingTriggers = ScriptApp.getUserTriggers(ss);
+  existingTriggers.forEach(trigger => {
+    ScriptApp.deleteTrigger(trigger);
+  });
+
+  // Crear trigger onEdit
+  ScriptApp.newTrigger('onEdit')
+    .forSpreadsheet(ss)
+    .onEdit()
+    .create();
+
+  // Crear trigger diario para recalcular el sistema
+  ScriptApp.newTrigger('recalculateSystem')
+    .forSpreadsheet(ss)
+    .timeBased()
+    .everyDays(1)
+    .atHour(1) // Ejecutar a la 1 AM
+    .create();
+
+  // Crear trigger semanal para alertas fiscales
+  ScriptApp.newTrigger('detectTaxDeadlines')
+    .forSpreadsheet(ss)
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.MONDAY)
+    .atHour(8) // Ejecutar los lunes a las 8 AM
+    .create();
+
+  Logger.log('Triggers automáticos configurados correctamente.');
 }

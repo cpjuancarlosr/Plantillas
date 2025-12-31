@@ -7,8 +7,8 @@
  * rangos con nombre rotos o fórmulas con errores, facilitando el soporte
  * y mantenimiento.
  *
- * @author Tu Nombre/Empresa
- * @version 1.0
+ * @author ECD OS
+ * @version 1.1
  */
 
 /**

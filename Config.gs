@@ -7,8 +7,8 @@
  * la gestión para que cualquier ajuste se realice en un único lugar,
  * facilitando el mantenimiento y la duplicación para nuevos clientes.
  *
- * @author Tu Nombre/Empresa
- * @version 1.0
+ * @author ECD OS
+ * @version 1.1
  */
 
 // Objeto principal de configuración para encapsular todas las variables.
@@ -57,12 +57,32 @@ const CONFIG = {
     DATA_RANGES: {
         INGRESOS_MONTO_COL: 'F5:F100',
         EGRESOS_MONTO_COL: 'F5:F100',
-        DASHBOARD_TOTAL_INGRESOS_CELL: 'C2',
+        GASTOS_FIJOS_SOURCE_RANGE: '30. Configuración!D5:D50', // Rango para la lista de gastos fijos
+        DASHBOARD_CAJA_HOY_CELL: 'C2', // Celda para el saldo de caja actual (Ingresos - Egresos)
         DASHBOARD_TOTAL_EGRESOS_CELL: 'C3',
-        IMPUESTOS_TOTAL_CELL: 'C5' // Celda para el total de impuestos en la hoja de Impuestos
+        DASHBOARD_CAJA_PROYECTADA_CELL: 'C4',
+        DASHBOARD_INGRESOS_BRUTOS_CELL: 'D2', // Celda para los ingresos brutos del período
+        IMPUESTOS_TOTAL_CELL: 'C5', // Celda para el total de impuestos en la hoja de Impuestos
+        COSTS_SOURCE_RANGE: '12. Costos y Márgenes!B5:B50', // Rango para la lista de costos directos
+        MARGIN_RESULT_CELL: '12. Costos y Márgenes!D5',     // Celda para escribir el margen de contribución
+        MARGIN_PERCENT_CELL: '12. Costos y Márgenes!E5',    // Celda para escribir el % de margen
+        CLIENT_REVENUE_SOURCE_RANGE: '14. Ranking de Clientes!B5:C50' // Rango para leer Nombres de Cliente y sus Ingresos
     },
 
-    // 5. Configuración de Impuestos
+    // 5. Configuración del Dashboard Dinámico
+    DASHBOARD_SETTINGS: {
+        RISK_SEMAPHORE_CELL: 'E8', // Celda para el "Semáforo de Riesgo"
+        RECOMMENDATIONS_CELL: 'B10', // Celda para las "Recomendaciones Automáticas"
+        SEMAPHORE_THRESHOLDS: {
+            GREEN: 2.0,  // Ratio (Ingresos/Egresos) > 2.0 es Verde
+            YELLOW: 1.0  // Ratio > 1.0 y <= 2.0 es Amarillo
+        },
+        RECOMMENDATION_THRESHOLDS: {
+            LOW_CASH_COVERAGE: 1.5 // Meses de cobertura de caja
+        }
+    },
+
+    // 6. Configuración de Impuestos
     TAX_SETTINGS: {
         GENERAL_TAX_RATE: 0.16 // Tasa de impuesto general (ej. 16% IVA)
     },
@@ -95,10 +115,11 @@ const CONFIG = {
     },
 
     // 9. Roles de Usuario (User Roles)
-    // Define permisos básicos.
+    // Define permisos básicos y las listas de correos para cada rol.
     USER_ROLES: {
-        OWNER: 'owner',       // Acceso total, puede cambiar configuración.
-        OPERATOR: 'operator'  // Acceso a inputs, pero no a configuración ni reportes sensibles.
+        OWNERS: ['correo@dueno.com'], // Lista de correos con acceso total
+        OPERATORS: ['correo@operador.com'], // Lista de correos con acceso limitado a inputs
+        // Se pueden añadir más roles si es necesario
     },
 
     // 10. Gestión de Períodos (Period Management)
@@ -110,11 +131,26 @@ const CONFIG = {
         ]
     },
 
-    // 11. Validación de Datos (Data Validation)
+    // 12. Validación de Datos (Data Validation)
     VALIDATION_RANGES: {
         CATEGORIAS_SOURCE: '30. Configuración!B5:B50', // Rango que contiene la lista de categorías
         INGRESOS_CATEGORIA_TARGET: 'C5:C100',         // Rango para aplicar el desplegable en Ingresos
         EGRESOS_CATEGORIA_TARGET: 'C5:C100'           // Rango para aplicar el desplegable en Egresos
+    },
+
+    // 13. Configuración del Período Activo
+    ACTIVE_PERIOD_CONFIG: {
+        ACTIVE_INCOME_SHEET_CELL: '30. Configuración!F5', // Celda que almacena el nombre de la hoja de ingresos activa
+        ACTIVE_EXPENSE_SHEET_CELL: '30. Configuración!F6'  // Celda que almacena el nombre de la hoja de egresos activa
+    },
+
+    // 14. Estructura y Reglas de Inputs
+    INPUT_STRUCTURE: {
+        DATE_COLUMN: 2,         // Número de la columna de Fecha (B)
+        AMOUNT_COLUMN: 6,       // Número de la columna de Monto (F)
+        REQUIRED_COLUMNS: [2, 3, 6], // Columnas obligatorias (Fecha, Categoría, Monto)
+        INCOMPLETE_ROW_COLOR: '#fff8e1', // Color para resaltar filas incompletas (amarillo claro)
+        START_ROW: 5            // Fila donde comienzan los datos
     }
 };
 

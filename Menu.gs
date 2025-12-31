@@ -6,8 +6,8 @@
  * interfaz de usuario de Google Sheets. Se activa automáticamente al abrir
  * el documento a través de la función `onOpen`.
  *
- * @author Tu Nombre/Empresa
- * @version 1.0
+ * @author ECD OS
+ * @version 1.1
  */
 
 /**
@@ -33,7 +33,8 @@ function createCustomMenu() {
       .addSeparator()
       .addSubMenu(SpreadsheetApp.getUi().createMenu('Gestión de Períodos')
           .addItem('Crear Nuevo Mes', 'createNewMonth') // Llama a la función en Periods.gs
-          .addItem('Limpiar Inputs del Mes', 'clearCurrentMonthInputs')) // Llama a la función en Periods.gs
+          .addItem('Limpiar Inputs del Mes', 'clearCurrentMonthInputs') // Llama a la función en Periods.gs
+          .addItem('Archivar Mes Actual', 'archiveCurrentMonth')) // Llama a la función en Periods.gs
       .addSeparator()
       .addItem('Configuración', 'openConfiguration')
       .addToUi();

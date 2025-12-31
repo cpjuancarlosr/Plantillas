@@ -7,8 +7,38 @@
  * roles de usuario (dueño vs. operador) y realizar auditorías básicas
  * de cambios para mantener la integridad de los datos.
  *
- * @author Tu Nombre/Empresa
- * @version 1.0
+ * @author ECD OS
+ * @version 1.1
  */
 
-// A continuación se implementarán las funciones de seguridad.
+/**
+ * Aplica protecciones a los rangos basadas en los roles definidos en Config.gs.
+ * Esta función asegura que solo los 'OWNERS' puedan editar los rangos protegidos,
+ * mientras que los 'OPERATORS' son eliminados de esos permisos.
+ */
+function applyRoleBasedProtections() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const protections = ss.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+
+  const owners = CONFIG.USER_ROLES.OWNERS;
+  const operators = CONFIG.USER_ROLES.OPERATORS;
+
+  protections.forEach(protection => {
+    // Asegurar que solo los 'owners' tengan permiso de edición
+    protection.getEditors().forEach(editor => {
+      if (owners.indexOf(editor.getEmail()) === -1) {
+        protection.removeEditor(editor);
+      }
+    });
+
+    // Añadir todos los 'owners' a la protección
+    protection.addEditors(owners);
+
+    // Remover explícitamente a los 'operators' de los rangos protegidos
+    operators.forEach(operatorEmail => {
+      protection.removeEditor(operatorEmail);
+    });
+  });
+
+  Logger.log('Protecciones basadas en roles aplicadas correctamente.');
+}
