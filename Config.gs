@@ -58,10 +58,16 @@ const CONFIG = {
         INGRESOS_MONTO_COL: 'F5:F100',
         EGRESOS_MONTO_COL: 'F5:F100',
         DASHBOARD_TOTAL_INGRESOS_CELL: 'C2',
-        DASHBOARD_TOTAL_EGRESOS_CELL: 'C3'
+        DASHBOARD_TOTAL_EGRESOS_CELL: 'C3',
+        IMPUESTOS_TOTAL_CELL: 'C5' // Celda para el total de impuestos en la hoja de Impuestos
     },
 
-    // 5. Parámetros de Alertas y Riesgos (Risk & Alert Parameters)
+    // 5. Configuración de Impuestos
+    TAX_SETTINGS: {
+        GENERAL_TAX_RATE: 0.16 // Tasa de impuesto general (ej. 16% IVA)
+    },
+
+    // 6. Parámetros de Alertas y Riesgos (Risk & Alert Parameters)
     // Umbrales para disparar notificaciones.
     RISK_THRESHOLDS: {
         // Si la caja proyectada a 30 días es menor que 1.5 veces los gastos fijos mensuales, se considera riesgo.
@@ -72,7 +78,7 @@ const CONFIG = {
         TAX_REMINDER_DAYS: 7
     },
 
-    // 6. Configuración de Correo Electrónico (Email Settings)
+    // 7. Configuración de Correo Electrónico (Email Settings)
     // Direcciones para enviar alertas automáticas.
     ALERT_EMAILS: {
         // Correo del dueño o tomador de decisiones principal.
@@ -81,27 +87,34 @@ const CONFIG = {
         ACCOUNTANT: 'correo@contador.com'
     },
 
-    // 7. Fechas Fiscales Clave (Key Fiscal Dates)
+    // 8. Fechas Fiscales Clave (Key Fiscal Dates)
     // Usado para recordatorios y cálculos. El formato es 'MM-DD'.
     FISCAL_DATES: {
         DECLARACION_MENSUAL: '03-20', // Día 20 de cada mes
         DECLARACION_ANUAL: '04-30'
     },
 
-    // 8. Roles de Usuario (User Roles)
+    // 9. Roles de Usuario (User Roles)
     // Define permisos básicos.
     USER_ROLES: {
         OWNER: 'owner',       // Acceso total, puede cambiar configuración.
         OPERATOR: 'operator'  // Acceso a inputs, pero no a configuración ni reportes sensibles.
     },
 
-    // 9. Gestión de Períodos (Period Management)
+    // 10. Gestión de Períodos (Period Management)
     // Define qué hojas se deben duplicar al crear un nuevo mes.
     PERIOD_MANAGEMENT: {
         SHEETS_TO_DUPLICATE: [
             '03. Ingresos',
             '04. Egresos'
         ]
+    },
+
+    // 11. Validación de Datos (Data Validation)
+    VALIDATION_RANGES: {
+        CATEGORIAS_SOURCE: '30. Configuración!B5:B50', // Rango que contiene la lista de categorías
+        INGRESOS_CATEGORIA_TARGET: 'C5:C100',         // Rango para aplicar el desplegable en Ingresos
+        EGRESOS_CATEGORIA_TARGET: 'C5:C100'           // Rango para aplicar el desplegable en Egresos
     }
 };
 

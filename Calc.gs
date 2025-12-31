@@ -42,12 +42,32 @@ function recalculateCashflowProjections() {
 
 /**
  * Recalcula los impuestos a provisionar.
- * Placeholder para la lógica detallada.
+ * Lee el total de ingresos y aplica la tasa de impuesto general.
  */
 function recalculateTaxes() {
-  // Lógica para tomar los ingresos, aplicar las tasas de CONFIG
-  // y actualizar la hoja de Impuestos.
   Logger.log('Recalculando impuestos...');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 1. Obtener las hojas y valores necesarios
+  const dashboardSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.DASHBOARD);
+  const impuestosSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.IMPUESTOS);
+
+  if (!dashboardSheet || !impuestosSheet) {
+    Logger.log('Error: No se encontraron las hojas necesarias para el cálculo de impuestos.');
+    return;
+  }
+
+  // 2. Leer el total de ingresos del dashboard (calculado previamente por recalculateKPIs)
+  const totalIngresos = dashboardSheet.getRange(CONFIG.DATA_RANGES.DASHBOARD_TOTAL_INGRESOS_CELL).getValue();
+
+  // 3. Calcular el impuesto
+  const taxRate = CONFIG.TAX_SETTINGS.GENERAL_TAX_RATE;
+  const impuestoCalculado = totalIngresos * taxRate;
+
+  // 4. Escribir el resultado en la hoja de Impuestos
+  impuestosSheet.getRange(CONFIG.DATA_RANGES.IMPUESTOS_TOTAL_CELL).setValue(impuestoCalculado);
+
+  Logger.log(`Impuestos calculados y actualizados: ${impuestoCalculado}`);
 }
 
 /**

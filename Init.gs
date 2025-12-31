@@ -61,9 +61,12 @@ function ECD_OS_INIT() {
     }
   }
 
-  // 5. Crear menú personalizado (llamando a la función del archivo Menu.gs)
+  // 5. Configurar validación de datos
+  setupDataValidation();
+
+  // 6. Crear menú personalizado (llamando a la función del archivo Menu.gs)
   createCustomMenu();
 
-  // 6. Mensaje de finalización
+  // 7. Mensaje de finalización
   SpreadsheetApp.getUi().alert('¡Sistema inicializado correctamente!');
 }
